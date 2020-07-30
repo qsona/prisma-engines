@@ -811,4 +811,89 @@ class NestedConnectOrCreateMutationSpec extends FlatSpec with Matchers with ApiS
       legacy = false,
     )
   }
-}
+
+  "The thing that doesn't work" should "work" in {
+    val project = SchemaDsl.fromStringV11() {
+      """
+        |model User {
+        |  id    String @default(uuid()) @id
+        |  email String @unique
+        |}
+        |
+        |model Tag {
+        |  id          String     @default(uuid()) @id
+        |  name        String     @unique
+        |  createdAt   DateTime   @default(now())
+        |  author      User       @relation(fields: [authorId], references: [id])
+        |  authorId    String
+        |  tagWinery   TagWinery[]
+        |}
+        |
+        |model TagWinery {
+        |  id          String      @default(uuid()) @id
+        |  tagName     Tag         @relation(fields: [tagId], references: [id])
+        |  tagId       String
+        |  winery      Winery      @relation(fields: [wineryId], references: [id])
+        |  wineryId    String
+        |  createdAt   DateTime    @default(now())
+        |  author      User        @relation(fields: [authorId], references: [id])
+        |  authorId    String
+        |}
+        |
+        |model Winery {
+        |  id                  String              @default(uuid()) @id
+        |  name                String              @unique
+        |  createdAt           DateTime            @default(now())
+        |  author              User                @relation(fields: [authorId], references: [id])
+        |  authorId            String
+        |  tag                 TagWinery[]
+        |
+        |}
+        | """.stripMargin
+    }
+    // database.setup(project)
+
+    // All records are new
+    var result = server.query(
+      s"""
+         |mutation {
+         |  createOneWinery(
+         |    data: {
+         |      name: "Winery X"
+         |      author: { connect: { email: "testuser@testuser.com" } }
+         |      tag: {
+         |        create: {
+         |          tagName: {
+         |            connectOrCreate: {
+         |              where: { name: "Tag 1" }
+         |              create: {
+         |                name: "Tag 1"
+         |                author: { connect: { email: "testuser@testuser.com" } }
+         |              }
+         |            }
+         |          }
+         |          author: { connect: { email: "testuser@testuser.com" } }
+         |        }
+         |      }
+         |    }
+         |  ) {
+         |    name
+         |    author {
+         |      email
+         |    }
+         |    tag {
+         |      tagName {
+         |        name
+         |      }
+         |    }
+         |  }
+         |}
+         |
+      """,
+      project,
+      legacy = false,
+    )
+
+    result.toString() should be("{\"data\":{\"createOneWinery\":{\"name\":\"Winery X\",\"author\":{\"email\":\"testuser@testuser.com\"},\"tag\":{\"tagname\":\"Tag 1\"}"}}}")
+  }
+  }
