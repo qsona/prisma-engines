@@ -1,5 +1,10 @@
+mod apply_migrations;
+mod create_migration;
+
 use anyhow::Context;
+use apply_migrations::ApplyMigrations;
 use colored::Colorize;
+use create_migration::CreateMigration;
 use migration_core::{commands::SchemaPushInput, GateKeeper};
 use std::{fs::File, io::Read};
 use structopt::*;
@@ -32,6 +37,10 @@ enum Command {
     Dmmf(DmmfCommand),
     /// Push a prisma schema directly to the database, without interacting with migrations.
     SchemaPush(SchemaPush),
+    /// Create a new migration.
+    CreateMigration(CreateMigration),
+    /// Apply migrations.
+    ApplyMigrations(ApplyMigrations),
 }
 
 #[derive(StructOpt)]
@@ -50,6 +59,7 @@ struct DmmfCommand {
 
 #[derive(StructOpt)]
 struct SchemaPush {
+    #[structopt(default_value = "prisma/schema.prisma")]
     schema_path: String,
     #[structopt(long)]
     force: bool,
@@ -60,6 +70,8 @@ async fn main() -> anyhow::Result<()> {
     init_logger();
 
     match Command::from_args() {
+        Command::ApplyMigrations(apply_migrations) => apply_migrations.run().await?,
+        Command::CreateMigration(create_migration) => create_migration.run().await?,
         Command::Dmmf(cmd) => generate_dmmf(&cmd).await?,
         Command::SchemaPush(cmd) => schema_push(&cmd).await?,
         Command::Introspect { url, file_path } => {
