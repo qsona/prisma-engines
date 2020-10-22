@@ -1,9 +1,8 @@
+use super::error_rendering::render_jsonrpc_error;
 use crate::{CoreError, CoreResult, GenericApi};
 use futures::{FutureExt, TryFutureExt};
 use jsonrpc_core::{types::error::Error as JsonRpcError, IoHandler, Params};
 use std::sync::Arc;
-
-use super::error_rendering::render_jsonrpc_error;
 
 pub struct RpcApi {
     io_handler: jsonrpc_core::IoHandler<()>,
@@ -12,45 +11,51 @@ pub struct RpcApi {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RpcCommand {
-    GetDatabaseVersion,
+    ApplyMigration,
     ApplyMigrations,
+    CalculateDatabaseSteps,
+    CalculateDatamodel,
     CreateMigration,
+    CorrectDrift,
     DebugPanic,
     DiagnoseMigrationHistory,
     EvaluateDataLoss,
+    GetDatabaseVersion,
     InferMigrationSteps,
     Initialize,
     ListMigrations,
+    MarkMigrationApplied,
+    MarkMigrationRolledBack,
     MigrationProgress,
     PlanMigration,
-    ApplyMigration,
-    UnapplyMigration,
     Reset,
     SchemaPush,
-    CalculateDatamodel,
-    CalculateDatabaseSteps,
+    UnapplyMigration,
 }
 
 impl RpcCommand {
     fn name(&self) -> &'static str {
         match self {
-            RpcCommand::GetDatabaseVersion => "getDatabaseVersion",
+            RpcCommand::ApplyMigration => "applyMigration",
             RpcCommand::ApplyMigrations => "applyMigrations",
+            RpcCommand::CalculateDatabaseSteps => "calculateDatabaseSteps",
+            RpcCommand::CalculateDatamodel => "calculateDatamodel",
+            RpcCommand::CorrectDrift => "correctDrift",
             RpcCommand::CreateMigration => "createMigration",
             RpcCommand::DebugPanic => "debugPanic",
             RpcCommand::DiagnoseMigrationHistory => "diagnoseMigrationHistory",
             RpcCommand::EvaluateDataLoss => "evaluateDataLoss",
+            RpcCommand::GetDatabaseVersion => "getDatabaseVersion",
             RpcCommand::InferMigrationSteps => "inferMigrationSteps",
-            RpcCommand::ListMigrations => "listMigrations",
-            RpcCommand::MigrationProgress => "migrationProgress",
-            RpcCommand::ApplyMigration => "applyMigration",
-            RpcCommand::UnapplyMigration => "unapplyMigration",
             RpcCommand::Initialize => "initialize",
+            RpcCommand::ListMigrations => "listMigrations",
+            RpcCommand::MarkMigrationApplied => "markMigrationApplied",
+            RpcCommand::MarkMigrationRolledBack => "markMigrationRolledBack",
+            RpcCommand::MigrationProgress => "migrationProgress",
             RpcCommand::PlanMigration => "planMigration",
             RpcCommand::Reset => "reset",
             RpcCommand::SchemaPush => "schemaPush",
-            RpcCommand::CalculateDatamodel => "calculateDatamodel",
-            RpcCommand::CalculateDatabaseSteps => "calculateDatabaseSteps",
+            RpcCommand::UnapplyMigration => "unapplyMigration",
         }
     }
 }
@@ -59,6 +64,7 @@ const AVAILABLE_COMMANDS: &[RpcCommand] = &[
     RpcCommand::GetDatabaseVersion,
     RpcCommand::ApplyMigration,
     RpcCommand::ApplyMigrations,
+    RpcCommand::CorrectDrift,
     RpcCommand::CreateMigration,
     RpcCommand::DiagnoseMigrationHistory,
     RpcCommand::EvaluateDataLoss,
@@ -66,6 +72,8 @@ const AVAILABLE_COMMANDS: &[RpcCommand] = &[
     RpcCommand::InferMigrationSteps,
     RpcCommand::Initialize,
     RpcCommand::ListMigrations,
+    RpcCommand::MarkMigrationApplied,
+    RpcCommand::MarkMigrationRolledBack,
     RpcCommand::MigrationProgress,
     RpcCommand::PlanMigration,
     RpcCommand::UnapplyMigration,
@@ -125,6 +133,7 @@ impl RpcApi {
         match cmd {
             RpcCommand::ApplyMigrations => render(executor.apply_migrations(&params.parse()?).await?),
             RpcCommand::CreateMigration => render(executor.create_migration(&params.parse()?).await?),
+            RpcCommand::CorrectDrift => render(executor.correct_drift(&params.parse()?).await?),
             RpcCommand::DebugPanic => render(executor.debug_panic(&()).await?),
             RpcCommand::ApplyMigration => render(executor.apply_migration(&params.parse()?).await?),
             RpcCommand::CalculateDatabaseSteps => render(executor.calculate_database_steps(&params.parse()?).await?),
@@ -137,6 +146,8 @@ impl RpcApi {
             RpcCommand::InferMigrationSteps => render(executor.infer_migration_steps(&params.parse()?).await?),
             RpcCommand::Initialize => render(executor.initialize(&params.parse()?).await?),
             RpcCommand::ListMigrations => render(executor.list_migrations(&serde_json::Value::Null).await?),
+            RpcCommand::MarkMigrationApplied => render(executor.mark_migration_applied(&params.parse()?).await?),
+            RpcCommand::MarkMigrationRolledBack => render(executor.mark_migration_rolled_back(&params.parse()?).await?),
             RpcCommand::MigrationProgress => render(executor.migration_progress(&params.parse()?).await?),
             RpcCommand::PlanMigration => render(executor.plan_migration(&params.parse()?).await?),
             RpcCommand::Reset => render(executor.reset(&()).await?),

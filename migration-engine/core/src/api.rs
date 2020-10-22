@@ -48,6 +48,7 @@ pub trait GenericApi: Send + Sync + 'static {
         input: &CalculateDatabaseStepsInput,
     ) -> CoreResult<MigrationStepsResultOutput>;
     async fn calculate_datamodel(&self, input: &CalculateDatamodelInput) -> CoreResult<CalculateDatamodelOutput>;
+    async fn correct_drift(&self, input: &CorrectDriftInput) -> CoreResult<CorrectDriftOutput>;
     async fn create_migration(&self, input: &CreateMigrationInput) -> CoreResult<CreateMigrationOutput>;
     async fn debug_panic(&self, input: &()) -> CoreResult<()>;
     async fn diagnose_migration_history(
@@ -58,6 +59,12 @@ pub trait GenericApi: Send + Sync + 'static {
     async fn infer_migration_steps(&self, input: &InferMigrationStepsInput) -> CoreResult<MigrationStepsResultOutput>;
     async fn initialize(&self, input: &InitializeInput) -> CoreResult<InitializeOutput>;
     async fn list_migrations(&self, input: &serde_json::Value) -> CoreResult<Vec<ListMigrationsOutput>>;
+    async fn mark_migration_applied(&self, input: &MarkMigrationAppliedInput)
+        -> CoreResult<MarkMigrationAppliedOutput>;
+    async fn mark_migration_rolled_back(
+        &self,
+        input: &MarkMigrationRolledBackInput,
+    ) -> CoreResult<MarkMigrationRolledBackOutput>;
     async fn migration_progress(&self, input: &MigrationProgressInput) -> CoreResult<MigrationProgressOutput>;
     async fn plan_migration(&self, input: &PlanMigrationInput) -> CoreResult<PlanMigrationOutput>;
     async fn reset(&self, input: &()) -> CoreResult<()>;
@@ -104,6 +111,12 @@ where
     async fn calculate_datamodel(&self, input: &CalculateDatamodelInput) -> CoreResult<CalculateDatamodelOutput> {
         self.handle_command::<CalculateDatamodelCommand>(input)
             .instrument(tracing::info_span!("CalculateDatamodel"))
+            .await
+    }
+
+    async fn correct_drift(&self, input: &CorrectDriftInput) -> CoreResult<CorrectDriftOutput> {
+        self.handle_command::<CorrectDriftCommand>(input)
+            .instrument(tracing::info_span!("CorrectDrift"))
             .await
     }
 
@@ -159,6 +172,24 @@ where
     async fn list_migrations(&self, input: &serde_json::Value) -> CoreResult<Vec<ListMigrationsOutput>> {
         self.handle_command::<ListMigrationsCommand>(input)
             .instrument(tracing::info_span!("ListMigrations"))
+            .await
+    }
+
+    async fn mark_migration_applied(
+        &self,
+        input: &MarkMigrationAppliedInput,
+    ) -> CoreResult<MarkMigrationAppliedOutput> {
+        self.handle_command::<MarkMigrationAppliedCommand>(input)
+            .instrument(tracing::info_span!("MarkMigrationApplied"))
+            .await
+    }
+
+    async fn mark_migration_rolled_back(
+        &self,
+        input: &MarkMigrationRolledBackInput,
+    ) -> CoreResult<MarkMigrationRolledBackOutput> {
+        self.handle_command::<MarkMigrationRolledBackCommand>(input)
+            .instrument(tracing::info_span!("MarkMigrationRolledBack"))
             .await
     }
 

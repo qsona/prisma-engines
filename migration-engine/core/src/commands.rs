@@ -11,6 +11,7 @@ mod calculate_database_steps;
 #[allow(missing_docs)]
 mod calculate_datamodel;
 mod command;
+mod correct_drift;
 mod create_migration;
 mod debug_panic;
 mod diagnose_migration_history;
@@ -21,6 +22,8 @@ mod infer_migration_steps;
 mod initialize;
 #[allow(missing_docs)]
 mod list_migrations;
+mod mark_migration_applied;
+mod mark_migration_rolled_back;
 #[allow(missing_docs)]
 mod migration_progress;
 mod plan_migration;
@@ -34,6 +37,7 @@ pub use apply_migrations::{ApplyMigrationsCommand, ApplyMigrationsInput, ApplyMi
 pub use calculate_database_steps::*;
 pub use calculate_datamodel::*;
 pub use command::MigrationCommand;
+pub use correct_drift::{CorrectDriftCommand, CorrectDriftInput, CorrectDriftOutput};
 pub use create_migration::{CreateMigrationCommand, CreateMigrationInput, CreateMigrationOutput};
 pub use debug_panic::DebugPanicCommand;
 pub use diagnose_migration_history::{
@@ -45,6 +49,10 @@ pub use get_database_version::*;
 pub use infer_migration_steps::*;
 pub use initialize::{InitializeCommand, InitializeInput, InitializeOutput};
 pub use list_migrations::*;
+pub use mark_migration_applied::{MarkMigrationAppliedCommand, MarkMigrationAppliedInput, MarkMigrationAppliedOutput};
+pub use mark_migration_rolled_back::{
+    MarkMigrationRolledBackCommand, MarkMigrationRolledBackInput, MarkMigrationRolledBackOutput,
+};
 pub use migration_progress::*;
 pub use plan_migration::{PlanMigrationCommand, PlanMigrationInput, PlanMigrationOutput};
 pub use reset::ResetCommand;
