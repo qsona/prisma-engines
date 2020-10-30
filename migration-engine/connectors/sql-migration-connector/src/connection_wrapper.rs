@@ -10,7 +10,7 @@ use quaint::{
 /// exposes a similar API, with additional error handling to return
 /// `ConnectorResult`s.
 #[derive(Clone, Debug)]
-pub(crate) struct Connection(Quaint);
+pub struct Connection(Quaint);
 
 #[derive(Debug)]
 pub(crate) struct ConnectionError<'a> {

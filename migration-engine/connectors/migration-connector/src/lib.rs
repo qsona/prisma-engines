@@ -42,6 +42,17 @@ pub trait MigrationConnector: Send + Sync + 'static {
     /// For example, in the SQL connector, a step would represent an SQL statement like `CREATE TABLE`.
     type DatabaseMigration: DatabaseMigrationMarker + Send + Sync + 'static;
 
+    /// A representation of a connection that the connector can work with.
+    /// Connections are used to expose advisory locking and concurrency
+    /// management to the core.
+    type Connection;
+
+    /// Acquire or reuse a connection.
+    async fn connect(&self) -> Self::Connection;
+
+    /// Acquire a connection with an advisory lock if possible.
+    async fn connect_locked(&self) -> Self::Connection;
+
     /// A string that should identify what database backend is being used. Note that this is not necessarily
     /// the connector name. The SQL connector for example can return "postgresql", "mysql" or "sqlite".
     fn connector_type(&self) -> &'static str;

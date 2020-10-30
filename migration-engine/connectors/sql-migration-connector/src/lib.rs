@@ -114,6 +114,7 @@ impl SqlMigrationConnector {
 #[async_trait::async_trait]
 impl MigrationConnector for SqlMigrationConnector {
     type DatabaseMigration = SqlMigration;
+    type Connection = Connection;
 
     fn connector_type(&self) -> &'static str {
         self.database_info.connection_info().sql_family().as_str()
