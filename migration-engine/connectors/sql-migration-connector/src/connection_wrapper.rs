@@ -81,13 +81,4 @@ impl Connection {
             connection_info: self.connection_info(),
         })
     }
-
-    /// Render a table name with the required prefixing for use with quaint query building.
-    pub(crate) fn table_name<'a>(&'a self, name: &'a str) -> quaint::ast::Table<'a> {
-        if self.connection_info().sql_family().is_sqlite() {
-            name.into()
-        } else {
-            (self.connection_info().schema_name(), name).into()
-        }
-    }
 }

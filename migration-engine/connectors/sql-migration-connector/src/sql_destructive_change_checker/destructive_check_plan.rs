@@ -143,7 +143,7 @@ impl DestructiveCheckPlan {
 async fn count_rows_in_table(table_name: &str, conn: &Connection) -> ConnectorResult<i64> {
     use quaint::ast::*;
 
-    let query = Select::from_table(conn.table_name(table_name)).value(count(asterisk()));
+    let query = Select::from_table(table_name).value(count(asterisk()));
     let result_set = conn.query(query).await?;
 
     let rows_count = result_set
@@ -169,7 +169,7 @@ async fn count_rows_in_table(table_name: &str, conn: &Connection) -> ConnectorRe
 async fn count_values_in_column(column_name: &str, table: &str, conn: &Connection) -> ConnectorResult<i64> {
     use quaint::ast::*;
 
-    let query = Select::from_table(conn.table_name(table))
+    let query = Select::from_table(table)
         .value(count(quaint::ast::Column::new(column_name)))
         .so_that(column_name.is_not_null());
 

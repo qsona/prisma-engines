@@ -106,10 +106,6 @@ impl SqlMigrationConnector {
         self.flavour.describe_schema(&self.connection).await
     }
 
-    fn schema_name(&self) -> &str {
-        self.database_info.connection_info().schema_name()
-    }
-
     fn sql_family(&self) -> SqlFamily {
         self.database_info.sql_family()
     }
@@ -132,6 +128,14 @@ impl MigrationConnector for SqlMigrationConnector {
 
     async fn create_database(database_str: &str) -> ConnectorResult<String> {
         Self::create_database(database_str).await
+    }
+
+    async fn connect(&self) -> Self::Connection {
+        todo!()
+    }
+
+    async fn connect_locked(&self) -> Self::Connection {
+        todo!()
     }
 
     async fn initialize(&self) -> ConnectorResult<()> {

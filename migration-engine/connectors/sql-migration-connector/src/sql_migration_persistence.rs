@@ -10,22 +10,23 @@ impl MigrationPersistence for SqlMigrationConnector {
     async fn init(&self) -> Result<(), ConnectorError> {
         let sql_str = match self.sql_family() {
             SqlFamily::Sqlite => {
-                let mut m = barrel::Migration::new().schema(self.schema_name());
+                let mut m = barrel::Migration::new().schema(self.database_info().connection_info().schema_name());
                 m.create_table_if_not_exists(MIGRATION_TABLE_NAME, migration_table_setup_sqlite);
                 m.make_from(barrel::SqlVariant::Sqlite)
             }
             SqlFamily::Postgres => {
-                let mut m = barrel::Migration::new().schema(self.schema_name());
+                let mut m = barrel::Migration::new().schema(self.database_info().connection_info().schema_name());
                 m.create_table(MIGRATION_TABLE_NAME, migration_table_setup_postgres);
-                m.schema(self.schema_name()).make_from(barrel::SqlVariant::Pg)
+                m.schema(self.database_info().connection_info().schema_name())
+                    .make_from(barrel::SqlVariant::Pg)
             }
             SqlFamily::Mysql => {
-                let mut m = barrel::Migration::new().schema(self.schema_name());
+                let mut m = barrel::Migration::new().schema(self.database_info().connection_info().schema_name());
                 m.create_table(MIGRATION_TABLE_NAME, migration_table_setup_mysql);
                 m.make_from(barrel::SqlVariant::Mysql)
             }
             SqlFamily::Mssql => {
-                let mut m = barrel::Migration::new().schema(self.schema_name());
+                let mut m = barrel::Migration::new().schema(self.database_info().connection_info().schema_name());
                 m.create_table_if_not_exists(MIGRATION_TABLE_NAME, migration_table_setup_mssql);
                 m.make_from(barrel::SqlVariant::Mssql)
             }
@@ -40,7 +41,10 @@ impl MigrationPersistence for SqlMigrationConnector {
         use quaint::ast::Delete;
 
         self.conn()
-            .query(Delete::from_table((self.schema_name(), MIGRATION_TABLE_NAME)))
+            .query(Delete::from_table((
+                self.database_info().connection_info().schema_name(),
+                MIGRATION_TABLE_NAME,
+            )))
             .await
             .ok();
 
@@ -201,7 +205,11 @@ impl SqlMigrationConnector {
                 // sqlite case. Otherwise quaint produces invalid SQL
                 MIGRATION_TABLE_NAME.to_string().into()
             }
-            _ => (self.schema_name().to_string(), MIGRATION_TABLE_NAME.to_string()).into(),
+            _ => (
+                self.database_info().connection_info().schema_name().to_string(),
+                MIGRATION_TABLE_NAME.to_string(),
+            )
+                .into(),
         }
     }
 
