@@ -11,6 +11,7 @@ use crate::{
 use once_cell::sync::Lazy;
 use prisma_value::PrismaValue;
 use regex::Regex;
+use sql_ddl::postgres::{CreateEnum, CreateIndex};
 use sql_schema_describer::{walkers::*, *};
 use std::borrow::Cow;
 
@@ -278,35 +279,15 @@ impl SqlRenderer for PostgresFlavour {
     }
 
     fn render_create_enum(&self, enm: &EnumWalker<'_>) -> Vec<String> {
-        let sql = format!(
-            r#"CREATE TYPE {enum_name} AS ENUM ({variants})"#,
-            enum_name = QuotedWithSchema {
-                schema_name: &self.0.schema(),
-                name: Quoted::postgres_ident(enm.name())
-            },
-            variants = enm.values().iter().map(Quoted::postgres_string).join(", "),
-        );
-
-        vec![sql]
+        vec![CreateEnum::named(enm.name())
+            .with_variants(enm.values().iter())
+            .to_string()]
     }
 
     fn render_create_index(&self, index: &IndexWalker<'_>) -> String {
-        let index_type = match index.index_type() {
-            IndexType::Unique => "UNIQUE ",
-            IndexType::Normal => "",
-        };
-
-        let index_name = self.quote(index.name());
-        let table_reference = self.quote(index.table().name());
-        let columns = index.columns().map(|c| self.quote(c.name()));
-
-        format!(
-            "CREATE {index_type}INDEX {index_name} ON {table_reference}({columns})",
-            index_type = index_type,
-            index_name = index_name,
-            table_reference = table_reference,
-            columns = columns.join(", ")
-        )
+        CreateIndex::new(index.name(), index.index_type().is_unique(), index.table().name())
+            .with_columns(index.columns().map(|c| c.name()))
+            .to_string()
     }
 
     fn render_create_table_as(&self, table: &TableWalker<'_>, table_name: &str) -> String {

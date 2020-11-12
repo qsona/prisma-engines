@@ -285,7 +285,7 @@ async fn create_enum_step_only_rendered_when_needed(api: &TestApi) -> TestResult
                     indoc! {
                         r#"
                         -- CreateEnum
-                        CREATE TYPE "prisma-tests"."Mood" AS ENUM ('HUNGRY', 'SLEEPY');
+                        CREATE TYPE "Mood" AS ENUM ('HUNGRY', 'SLEEPY');
                         -- CreateTable
                         CREATE TABLE "Cat" (
                             "id" INTEGER NOT NULL,
