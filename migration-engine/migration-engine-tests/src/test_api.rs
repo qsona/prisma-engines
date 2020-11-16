@@ -296,6 +296,7 @@ impl TestApi {
 
     pub async fn assert_schema(&self) -> Result<SchemaAssertion, anyhow::Error> {
         let schema = self.describe_database().await?;
+
         Ok(SchemaAssertion(schema))
     }
 
@@ -492,6 +493,31 @@ pub async fn sqlite_test_api(args: TestAPIArgs) -> TestApi {
 
     TestApi {
         connector_name: "sqlite",
+        database: connector.quaint().clone(),
+        api: test_api(connector).await,
+        tags: args.test_tag,
+    }
+}
+
+pub async fn mssql_2017_test_api(args: TestAPIArgs) -> TestApi {
+    mssql_test_api(mssql_2017_url("master"), args, "mssql_2017").await
+}
+
+pub async fn mssql_2019_test_api(args: TestAPIArgs) -> TestApi {
+    mssql_test_api(mssql_2019_url("master"), args, "mssql_2019").await
+}
+
+async fn mssql_test_api(connection_string: String, args: TestAPIArgs, connector_name: &'static str) -> TestApi {
+    let schema = args.test_function_name;
+    let connection_string = format!("{};schema={}", connection_string, schema);
+    let database = Quaint::new(&connection_string).await.unwrap();
+
+    connectors::mssql::reset_schema(&database, schema).await.unwrap();
+
+    let connector = SqlMigrationConnector::new(&connection_string).await.unwrap();
+
+    TestApi {
+        connector_name,
         database: connector.quaint().clone(),
         api: test_api(connector).await,
         tags: args.test_tag,

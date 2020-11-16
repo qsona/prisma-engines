@@ -8,8 +8,7 @@ use crate::{
     pair::Pair,
     sql_migration::{
         expanded_alter_column::{expand_mysql_alter_column, MysqlAlterColumn},
-        AddColumn, AlterColumn, AlterEnum, AlterTable, DropColumn, DropForeignKey, DropIndex, RedefineTable,
-        TableChange,
+        AddColumn, AlterColumn, AlterEnum, AlterTable, DropColumn, RedefineTable, TableChange,
     },
     sql_schema_differ::ColumnChanges,
 };
@@ -18,7 +17,7 @@ use prisma_value::PrismaValue;
 use regex::Regex;
 use sql_schema_describer::{
     walkers::{ColumnWalker, EnumWalker, ForeignKeyWalker, IndexWalker, TableWalker},
-    ColumnTypeFamily, DefaultValue, IndexType, SqlSchema,
+    ColumnTypeFamily, DefaultKind, DefaultValue, IndexType, SqlSchema,
 };
 use std::borrow::Cow;
 
@@ -130,7 +129,7 @@ impl SqlRenderer for MysqlFlavour {
         let default_str = column
             .default()
             .filter(|default| {
-                !matches!(default, DefaultValue::DBGENERATED(_) | DefaultValue::SEQUENCE(_))
+                !matches!(default.kind(), DefaultKind::DBGENERATED(_) | DefaultKind::SEQUENCE(_))
                     // We do not want to render JSON defaults because they are not supported by MySQL.
                     && !matches!(column.column_type_family(), ColumnTypeFamily::Json)
                     // We do not want to render binary defaults because they are not supported by MySQL.
@@ -178,17 +177,17 @@ impl SqlRenderer for MysqlFlavour {
     }
 
     fn render_default<'a>(&self, default: &'a DefaultValue, family: &ColumnTypeFamily) -> Cow<'a, str> {
-        match (default, family) {
-            (DefaultValue::DBGENERATED(val), _) => val.as_str().into(),
-            (DefaultValue::VALUE(PrismaValue::String(val)), ColumnTypeFamily::String)
-            | (DefaultValue::VALUE(PrismaValue::Enum(val)), ColumnTypeFamily::Enum(_)) => {
+        match (default.kind(), family) {
+            (DefaultKind::DBGENERATED(val), _) => val.as_str().into(),
+            (DefaultKind::VALUE(PrismaValue::String(val)), ColumnTypeFamily::String)
+            | (DefaultKind::VALUE(PrismaValue::Enum(val)), ColumnTypeFamily::Enum(_)) => {
                 format!("'{}'", escape_string_literal(&val)).into()
             }
-            (DefaultValue::NOW, ColumnTypeFamily::DateTime) => "CURRENT_TIMESTAMP(3)".into(),
-            (DefaultValue::NOW, _) => unreachable!("NOW default on non-datetime column"),
-            (DefaultValue::VALUE(val), ColumnTypeFamily::DateTime) => format!("'{}'", val).into(),
-            (DefaultValue::VALUE(val), _) => format!("{}", val).into(),
-            (DefaultValue::SEQUENCE(_), _) => "".into(),
+            (DefaultKind::NOW, ColumnTypeFamily::DateTime) => "CURRENT_TIMESTAMP(3)".into(),
+            (DefaultKind::NOW, _) => unreachable!("NOW default on non-datetime column"),
+            (DefaultKind::VALUE(val), ColumnTypeFamily::DateTime) => format!("'{}'", val).into(),
+            (DefaultKind::VALUE(val), _) => format!("{}", val).into(),
+            (DefaultKind::SEQUENCE(_), _) => "".into(),
         }
     }
 
@@ -279,16 +278,16 @@ impl SqlRenderer for MysqlFlavour {
         Vec::new()
     }
 
-    fn render_drop_foreign_key(&self, drop_foreign_key: &DropForeignKey) -> String {
+    fn render_drop_foreign_key(&self, foreign_key: &ForeignKeyWalker<'_>) -> String {
         format!(
             "ALTER TABLE {table} DROP FOREIGN KEY {constraint_name}",
-            table = self.quote(&drop_foreign_key.table),
-            constraint_name = Quoted::mysql_ident(&drop_foreign_key.constraint_name),
+            table = self.quote(foreign_key.table().name()),
+            constraint_name = Quoted::mysql_ident(foreign_key.constraint_name().unwrap()),
         )
     }
 
-    fn render_drop_index(&self, drop_index: &DropIndex) -> String {
-        mysql_drop_index(&drop_index.table, &drop_index.name)
+    fn render_drop_index(&self, index: &IndexWalker<'_>) -> String {
+        mysql_drop_index(&index.table().name(), &index.name())
     }
 
     fn render_drop_table(&self, table_name: &str) -> Vec<String> {

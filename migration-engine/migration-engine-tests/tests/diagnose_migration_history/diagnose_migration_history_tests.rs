@@ -101,7 +101,7 @@ async fn diagnose_migration_history_calculates_drift(api: &TestApi) -> TestResul
     Ok(())
 }
 
-#[test_each_connector(ignore("postgres"))]
+#[test_each_connector(ignore("postgres", "mssql_2017", "mssql_2019"))]
 async fn diagnose_migration_history_calculates_drift_in_presence_of_failed_migrations(api: &TestApi) -> TestResult {
     let directory = api.create_migrations_directory()?;
 

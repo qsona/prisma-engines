@@ -58,7 +58,7 @@ impl ImperativeMigrationsPersistence for SqlMigrationConnector {
         let id = Uuid::new_v4().to_string();
         let now = chrono::Utc::now();
 
-        let insert = Insert::single_into(IMPERATIVE_MIGRATIONS_TABLE_NAME)
+        let insert = Insert::single_into((self.schema_name(), IMPERATIVE_MIGRATIONS_TABLE_NAME))
             .value("id", id.as_str())
             .value("checksum", checksum)
             .value("logs", "")
@@ -75,7 +75,7 @@ impl ImperativeMigrationsPersistence for SqlMigrationConnector {
     async fn mark_migration_rolled_back_by_id(&self, migration_id: &str) -> ConnectorResult<()> {
         let conn = self.conn();
 
-        let update = Update::table(IMPERATIVE_MIGRATIONS_TABLE_NAME)
+        let update = Update::table((self.schema_name(), IMPERATIVE_MIGRATIONS_TABLE_NAME))
             .so_that(Column::from("id").equals(migration_id))
             .set("rolled_back_at", chrono::Utc::now());
 

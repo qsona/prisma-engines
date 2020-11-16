@@ -2,7 +2,7 @@ use crate::{
     pair::Pair,
     sql_schema_differ::{ColumnChange, ColumnChanges},
 };
-use sql_schema_describer::{walkers::ColumnWalker, ColumnArity, ColumnType, DefaultValue};
+use sql_schema_describer::{walkers::ColumnWalker, ColumnArity, ColumnType, DefaultKind, DefaultValue};
 
 pub(crate) fn expand_mysql_alter_column(columns: &Pair<ColumnWalker<'_>>, changes: &ColumnChanges) -> MysqlAlterColumn {
     if changes.only_default_changed() && columns.next().default().is_none() {
@@ -15,11 +15,16 @@ pub(crate) fn expand_mysql_alter_column(columns: &Pair<ColumnWalker<'_>>, change
 
     // @default(dbgenerated()) does not give us the information in the prisma schema, so we have to
     // transfer it from the introspected current state of the database.
-    let new_default = match (columns.previous().default(), columns.next().default()) {
-        (Some(DefaultValue::DBGENERATED(previous)), Some(DefaultValue::DBGENERATED(next)))
+    let defaults = (
+        columns.previous().default().as_ref().map(|d| d.kind()),
+        columns.next().default().as_ref().map(|d| d.kind()),
+    );
+
+    let new_default = match defaults {
+        (Some(DefaultKind::DBGENERATED(previous)), Some(DefaultKind::DBGENERATED(next)))
             if next.is_empty() && !previous.is_empty() =>
         {
-            Some(DefaultValue::DBGENERATED(previous.clone()))
+            columns.previous().default().cloned()
         }
         _ => columns.next().default().cloned(),
     };
@@ -83,6 +88,35 @@ pub(crate) fn expand_postgres_alter_column(
     changes
 }
 
+pub(crate) fn expand_mssql_alter_column(
+    columns: &Pair<ColumnWalker<'_>>,
+    column_changes: &ColumnChanges,
+) -> Vec<MsSqlAlterColumn> {
+    let mut changes = Vec::new();
+
+    // Default value changes require us to re-create the constraint, which we
+    // must do before modifying the column.
+    if column_changes.default_changed() {
+        let constraint_name = columns.previous().default().unwrap().constraint_name();
+
+        changes.push(MsSqlAlterColumn::DropDefault {
+            constraint_name: constraint_name.unwrap().into(),
+        });
+
+        if !column_changes.only_default_changed() {
+            changes.push(MsSqlAlterColumn::Modify);
+        }
+
+        if let Some(next_default) = columns.next().default() {
+            changes.push(MsSqlAlterColumn::SetDefault(next_default.clone()));
+        }
+    } else {
+        changes.push(MsSqlAlterColumn::Modify);
+    }
+
+    changes
+}
+
 #[derive(Debug)]
 /// https://www.postgresql.org/docs/9.1/sql-altertable.html
 pub(crate) enum PostgresAlterColumn {
@@ -93,6 +127,13 @@ pub(crate) enum PostgresAlterColumn {
     SetNotNull,
     /// Add an auto-incrementing sequence as a default on the column.
     AddSequence,
+}
+
+#[derive(Debug)]
+pub(crate) enum MsSqlAlterColumn {
+    DropDefault { constraint_name: String },
+    SetDefault(DefaultValue),
+    Modify,
 }
 
 /// https://dev.mysql.com/doc/refman/8.0/en/alter-table.html

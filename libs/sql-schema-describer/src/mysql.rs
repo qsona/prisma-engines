@@ -261,41 +261,41 @@ async fn get_all_columns(
                 Some(default_string) => {
                     Some(match &tpe.family {
                         ColumnTypeFamily::Int => match parse_int(&default_string) {
-                            Some(int_value) => DefaultValue::VALUE(int_value),
-                            None => DefaultValue::DBGENERATED(default_string),
+                            Some(int_value) => DefaultValue::value(int_value),
+                            None => DefaultValue::db_generated(default_string),
                         },
                         ColumnTypeFamily::BigInt => match parse_big_int(&default_string) {
-                            Some(int_value) => DefaultValue::VALUE(int_value),
-                            None => DefaultValue::DBGENERATED(default_string),
+                            Some(int_value) => DefaultValue::value(int_value),
+                            None => DefaultValue::db_generated(default_string),
                         },
                         ColumnTypeFamily::Float => match parse_float(&default_string) {
-                            Some(float_value) => DefaultValue::VALUE(float_value),
-                            None => DefaultValue::DBGENERATED(default_string),
+                            Some(float_value) => DefaultValue::value(float_value),
+                            None => DefaultValue::db_generated(default_string),
                         },
                         ColumnTypeFamily::Decimal => match parse_float(&default_string) {
-                            Some(float_value) => DefaultValue::VALUE(float_value),
-                            None => DefaultValue::DBGENERATED(default_string),
+                            Some(float_value) => DefaultValue::value(float_value),
+                            None => DefaultValue::db_generated(default_string),
                         },
                         ColumnTypeFamily::Boolean => match parse_int(&default_string) {
-                            Some(PrismaValue::Int(1)) => DefaultValue::VALUE(PrismaValue::Boolean(true)),
-                            Some(PrismaValue::Int(0)) => DefaultValue::VALUE(PrismaValue::Boolean(false)),
-                            _ => DefaultValue::DBGENERATED(default_string),
+                            Some(PrismaValue::Int(1)) => DefaultValue::value(true),
+                            Some(PrismaValue::Int(0)) => DefaultValue::value(false),
+                            _ => DefaultValue::db_generated(default_string),
                         },
-                        ColumnTypeFamily::String => DefaultValue::VALUE(PrismaValue::String(
-                            unescape_and_unquote_default_string(default_string, flavour),
-                        )),
+                        ColumnTypeFamily::String => {
+                            DefaultValue::value(unescape_and_unquote_default_string(default_string, flavour))
+                        }
                         //todo check other now() definitions
                         ColumnTypeFamily::DateTime => match default_is_current_timestamp(&default_string) {
-                            true => DefaultValue::NOW,
-                            _ => DefaultValue::DBGENERATED(default_string),
+                            true => DefaultValue::now(),
+                            _ => DefaultValue::db_generated(default_string),
                         },
-                        ColumnTypeFamily::Binary => DefaultValue::DBGENERATED(default_string),
-                        ColumnTypeFamily::Json => DefaultValue::DBGENERATED(default_string),
-                        ColumnTypeFamily::Uuid => DefaultValue::DBGENERATED(default_string),
-                        ColumnTypeFamily::Enum(_) => DefaultValue::VALUE(PrismaValue::Enum(unquote_string(
+                        ColumnTypeFamily::Binary => DefaultValue::db_generated(default_string),
+                        ColumnTypeFamily::Json => DefaultValue::db_generated(default_string),
+                        ColumnTypeFamily::Uuid => DefaultValue::db_generated(default_string),
+                        ColumnTypeFamily::Enum(_) => DefaultValue::value(PrismaValue::Enum(unquote_string(
                             &default_string.replace("_utf8mb4", "").replace("\\\'", ""),
                         ))),
-                        ColumnTypeFamily::Unsupported(_) => DefaultValue::DBGENERATED(default_string),
+                        ColumnTypeFamily::Unsupported(_) => DefaultValue::db_generated(default_string),
                     })
                 }
             },

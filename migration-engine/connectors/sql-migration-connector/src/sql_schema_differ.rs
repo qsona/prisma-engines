@@ -110,11 +110,13 @@ impl<'schema> SqlSchemaDiffer<'schema> {
     fn diff_internal(&self) -> SqlSchemaDiff {
         let tables_to_redefine = self.flavour.tables_to_redefine(&self);
         let mut alter_indexes = self.alter_indexes(&tables_to_redefine);
+
         let redefine_indexes = if self.flavour.can_alter_index(&self.database_info) {
             Vec::new()
         } else {
             std::mem::replace(&mut alter_indexes, Vec::new())
         };
+
         let (drop_tables, mut drop_foreign_keys) = self.drop_tables();
         self.drop_foreign_keys(&mut drop_foreign_keys, &tables_to_redefine);
 
@@ -348,8 +350,8 @@ impl<'schema> SqlSchemaDiffer<'schema> {
                 }
 
                 drop_indexes.push(DropIndex {
-                    table: tables.previous().name().to_owned(),
-                    name: index.name().to_owned(),
+                    table_index: index.table().table_index(),
+                    index_index: index.index(),
                 })
             }
         }
@@ -359,8 +361,8 @@ impl<'schema> SqlSchemaDiffer<'schema> {
         if !tables_to_redefine.is_empty() && self.flavour.should_drop_indexes_from_dropped_tables() {
             drop_indexes.extend(self.dropped_tables().flat_map(|table| {
                 table.indexes().map(move |index| DropIndex {
-                    table: table.name().to_owned(),
-                    name: index.name().to_owned(),
+                    table_index: index.table().table_index(),
+                    index_index: index.index(),
                 })
             }))
         }

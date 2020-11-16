@@ -6,6 +6,7 @@ use crate::{
     error::CheckDatabaseInfoResult,
     error::{quaint_error_to_connector_error, SystemDatabase},
 };
+use indoc::indoc;
 use migration_connector::{ConnectorError, ConnectorResult, MigrationDirectory};
 use once_cell::sync::Lazy;
 use quaint::connector::MysqlUrl;
@@ -56,7 +57,7 @@ impl SqlFlavour for MysqlFlavour {
     }
 
     async fn create_imperative_migrations_table(&self, connection: &Connection) -> ConnectorResult<()> {
-        let sql = r#"
+        let sql = indoc! {r#"
             CREATE TABLE _prisma_migrations (
                 id                      VARCHAR(36) PRIMARY KEY NOT NULL,
                 checksum                VARCHAR(64) NOT NULL,
@@ -68,7 +69,7 @@ impl SqlFlavour for MysqlFlavour {
                 applied_steps_count     INTEGER UNSIGNED NOT NULL DEFAULT 0,
                 script                  TEXT NOT NULL
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-        "#;
+        "#};
 
         Ok(connection.raw_cmd(sql).await?)
     }

@@ -1,4 +1,5 @@
 use crate::{connect, connection_wrapper::Connection, error::quaint_error_to_connector_error, flavour::SqlFlavour};
+use indoc::indoc;
 use migration_connector::{ConnectorError, ConnectorResult, MigrationDirectory};
 use quaint::prelude::ConnectionInfo;
 use sql_schema_describer::{DescriberErrorKind, SqlSchema, SqlSchemaDescriberBackend};
@@ -34,7 +35,7 @@ impl SqlFlavour for SqliteFlavour {
     }
 
     async fn create_imperative_migrations_table(&self, connection: &Connection) -> ConnectorResult<()> {
-        let sql = r#"
+        let sql = indoc! {r#"
             CREATE TABLE "_prisma_migrations" (
                 "id"                    TEXT PRIMARY KEY NOT NULL,
                 "checksum"              TEXT NOT NULL,
@@ -46,9 +47,9 @@ impl SqlFlavour for SqliteFlavour {
                 "applied_steps_count"   INTEGER UNSIGNED NOT NULL DEFAULT 0,
                 "script"                TEXT NOT NULL
             );
-        "#;
+        "#};
 
-        Ok(connection.raw_cmd(sql).await?)
+        Ok(connection.raw_cmd(&sql).await?)
     }
 
     async fn describe_schema<'a>(&'a self, connection: &Connection) -> ConnectorResult<SqlSchema> {

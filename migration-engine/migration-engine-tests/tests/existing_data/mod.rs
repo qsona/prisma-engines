@@ -801,7 +801,7 @@ async fn set_default_current_timestamp_on_existing_column_works(api: &TestApi) -
         .assert_warnings(&[])?;
 
     api.assert_schema().await?.assert_table("User", |table| {
-        table.assert_column("created_at", |column| column.assert_default(Some(DefaultValue::NOW)))
+        table.assert_column("created_at", |column| column.assert_default(Some(DefaultValue::now())))
     })?;
 
     Ok(())

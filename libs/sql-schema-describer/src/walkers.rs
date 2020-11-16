@@ -2,6 +2,8 @@
 
 #![deny(missing_docs)]
 
+use std::collections::HashSet;
+
 use crate::{
     Column, ColumnArity, ColumnType, ColumnTypeFamily, DefaultValue, Enum, ForeignKey, ForeignKeyAction, Index,
     IndexType, PrimaryKey, SqlSchema, Table,
@@ -108,7 +110,7 @@ impl<'a> ColumnWalker<'a> {
 }
 
 /// Traverse a table.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct TableWalker<'a> {
     /// The schema the column is contained in.
     schema: &'a SqlSchema,
@@ -186,6 +188,17 @@ impl<'a> TableWalker<'a> {
         })
     }
 
+    /// Traverse foreign keys from other tables, referencing current table.
+    pub fn referencing_foreign_keys(&self) -> impl Iterator<Item = ForeignKeyWalker<'a>> {
+        let table_index = self.table_index;
+
+        self.schema
+            .table_walkers()
+            .filter(move |t| t.table_index() != table_index)
+            .flat_map(|t| t.foreign_keys())
+            .filter(move |fk| fk.referenced_table().table_index() == table_index)
+    }
+
     /// Get a foreign key by index.
     pub fn foreign_key_at(&self, index: usize) -> ForeignKeyWalker<'a> {
         ForeignKeyWalker {
@@ -228,6 +241,7 @@ impl<'a> TableWalker<'a> {
 }
 
 /// Traverse a foreign key.
+#[derive(Debug)]
 pub struct ForeignKeyWalker<'schema> {
     /// The index of the foreign key in the table.
     foreign_key_index: usize,
@@ -240,6 +254,32 @@ impl<'schema> ForeignKeyWalker<'schema> {
     /// The names of the foreign key columns on the referencing table.
     pub fn constrained_column_names(&self) -> &[String] {
         &self.foreign_key().columns
+    }
+
+    /// True, if the relation makes a loop back to the same parent at some point.
+    pub fn is_a_relation_loop(&self) -> bool {
+        // self-relation
+        if self.table().name() == self.referenced_table().name() {
+            return true;
+        }
+
+        fn inner<'schema>(walker: &ForeignKeyWalker<'schema>, visited_tables: &mut HashSet<usize>) {
+            visited_tables.insert(walker.referenced_table().table_index());
+
+            // loop-breaker
+            if visited_tables.contains(&walker.table().table_index()) {
+                return;
+            }
+
+            for fk in walker.referenced_table().foreign_keys() {
+                inner(&fk, visited_tables);
+            }
+        }
+
+        let mut visited = HashSet::new();
+        inner(self, &mut visited);
+
+        visited.contains(&self.table().table_index())
     }
 
     /// The foreign key columns on the referencing table.
@@ -314,6 +354,7 @@ impl<'schema> ForeignKeyWalker<'schema> {
 }
 
 /// Traverse an index.
+#[derive(Debug)]
 pub struct IndexWalker<'a> {
     schema: &'a SqlSchema,
     /// The index of the table in the schema.
@@ -366,6 +407,7 @@ impl<'a> IndexWalker<'a> {
 }
 
 /// Traverse an enum.
+#[derive(Debug)]
 pub struct EnumWalker<'a> {
     pub(crate) schema: &'a SqlSchema,
     pub(crate) enum_index: usize,

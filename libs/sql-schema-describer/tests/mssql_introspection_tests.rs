@@ -83,7 +83,7 @@ async fn all_mssql_column_types_must_work() {
                 data_type: "decimal".to_string(),
                 full_data_type: "decimal".to_string(),
                 character_maximum_length: None,
-                family: ColumnTypeFamily::Float,
+                family: ColumnTypeFamily::Decimal,
                 arity: ColumnArity::Required,
                 native_type: None,
             },
@@ -124,7 +124,7 @@ async fn all_mssql_column_types_must_work() {
                 data_type: "numeric".to_string(),
                 full_data_type: "numeric".to_string(),
                 character_maximum_length: None,
-                family: ColumnTypeFamily::Float,
+                family: ColumnTypeFamily::Decimal,
                 arity: ColumnArity::Required,
                 native_type: None,
             },
@@ -332,7 +332,7 @@ async fn all_mssql_column_types_must_work() {
             tpe: ColumnType {
                 data_type: "text".to_string(),
                 full_data_type: "text".to_string(),
-                character_maximum_length: Some(2147483647),
+                character_maximum_length: None,
                 family: ColumnTypeFamily::String,
                 arity: ColumnArity::Required,
                 native_type: None,
@@ -360,7 +360,7 @@ async fn all_mssql_column_types_must_work() {
             tpe: ColumnType {
                 data_type: "nvarchar".to_string(),
                 full_data_type: "nvarchar".to_string(),
-                character_maximum_length: Some(4294967295),
+                character_maximum_length: Some(2147483647),
                 family: ColumnTypeFamily::String,
                 arity: ColumnArity::Required,
                 native_type: None,
@@ -374,7 +374,7 @@ async fn all_mssql_column_types_must_work() {
             tpe: ColumnType {
                 data_type: "ntext".to_string(),
                 full_data_type: "ntext".to_string(),
-                character_maximum_length: Some(1073741823),
+                character_maximum_length: None,
                 family: ColumnTypeFamily::String,
                 arity: ColumnArity::Required,
                 native_type: None,
@@ -430,7 +430,7 @@ async fn all_mssql_column_types_must_work() {
             tpe: ColumnType {
                 data_type: "image".to_string(),
                 full_data_type: "image".to_string(),
-                character_maximum_length: Some(2147483647),
+                character_maximum_length: None,
                 family: ColumnTypeFamily::Binary,
                 arity: ColumnArity::Required,
                 native_type: None,
@@ -442,20 +442,20 @@ async fn all_mssql_column_types_must_work() {
     ];
     expected_columns.sort_unstable_by_key(|c| c.name.to_owned());
 
-    assert_eq!(
-        table,
-        Table {
-            name: "User".to_string(),
-            columns: expected_columns,
-            indices: vec![],
-            primary_key: Some(PrimaryKey {
-                columns: vec!["primary_col".to_string()],
-                sequence: None,
-                constraint_name: None,
-            }),
-            foreign_keys: vec![],
-        }
-    );
+    assert_eq!("User", &table.name);
+    assert_eq!(expected_columns, table.columns);
+    assert_eq!(Vec::<Index>::new(), table.indices);
+    assert_eq!(Vec::<ForeignKey>::new(), table.foreign_keys);
+
+    let pk = table.primary_key.as_ref().unwrap();
+
+    assert_eq!(vec!["primary_col".to_string()], pk.columns);
+    assert_eq!(None, pk.sequence);
+    assert!(pk
+        .constraint_name
+        .as_ref()
+        .map(|s| s.starts_with("PK__User__"))
+        .unwrap_or(false));
 }
 
 #[tokio::test]
@@ -463,12 +463,18 @@ async fn mssql_foreign_key_on_delete_must_be_handled() {
     let db_name = "mssql_foreign_key_on_delete_must_be_handled";
 
     let sql = format!(
-        "CREATE TABLE [{0}].[City] (id INT NOT NULL IDENTITY(1,1) PRIMARY KEY);
-         CREATE TABLE [{0}].[User] (
-            id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
-            city INT, FOREIGN KEY(city) REFERENCES [{0}].[City] (id) ON DELETE NO ACTION,
-            city_cascade INT, FOREIGN KEY(city_cascade) REFERENCES [{0}].[City] (id) ON DELETE CASCADE
-        )",
+        "
+            CREATE TABLE [{0}].[City] (id INT NOT NULL IDENTITY(1,1), CONSTRAINT [PK__City] PRIMARY KEY ([id]));
+            CREATE TABLE [{0}].[User]
+            (
+                id           INT NOT NULL IDENTITY (1,1),
+                city         INT,
+                city_cascade INT,
+                CONSTRAINT [FK__city] FOREIGN KEY (city) REFERENCES [{0}].[City] (id) ON DELETE NO ACTION,
+                CONSTRAINT [FK__city_cascade] FOREIGN KEY (city_cascade) REFERENCES [{0}].[City] (id) ON DELETE CASCADE,
+                CONSTRAINT [PK__User] PRIMARY KEY ([id])
+            );
+        ",
         db_name
     );
     let inspector = get_mssql_describer_for_schema(&sql, db_name).await;
@@ -527,11 +533,11 @@ async fn mssql_foreign_key_on_delete_must_be_handled() {
             primary_key: Some(PrimaryKey {
                 columns: vec!["id".to_string()],
                 sequence: None,
-                constraint_name: None,
+                constraint_name: Some("PK__User".into()),
             }),
             foreign_keys: vec![
                 ForeignKey {
-                    constraint_name: Some("User_ibfk_1".to_owned()),
+                    constraint_name: Some("FK__city".to_owned()),
                     columns: vec!["city".to_string()],
                     referenced_columns: vec!["id".to_string()],
                     referenced_table: "City".to_string(),
@@ -539,7 +545,7 @@ async fn mssql_foreign_key_on_delete_must_be_handled() {
                     on_delete_action: ForeignKeyAction::NoAction,
                 },
                 ForeignKey {
-                    constraint_name: Some("User_ibfk_2".to_owned()),
+                    constraint_name: Some("FK__city_cascade".to_owned()),
                     columns: vec!["city_cascade".to_string()],
                     referenced_columns: vec!["id".to_string()],
                     referenced_table: "City".to_string(),

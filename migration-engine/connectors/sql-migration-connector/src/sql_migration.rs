@@ -164,8 +164,8 @@ pub(crate) struct CreateIndex {
 
 #[derive(Debug)]
 pub(crate) struct DropIndex {
-    pub table: String,
-    pub name: String,
+    pub table_index: usize,
+    pub index_index: usize,
 }
 
 #[derive(Debug)]
