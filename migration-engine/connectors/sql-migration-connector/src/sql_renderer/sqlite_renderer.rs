@@ -38,29 +38,16 @@ impl SqlRenderer for SqliteFlavour {
     }
 
     fn render_column(&self, column: &ColumnWalker<'_>) -> String {
-        let column_name = self.quote(column.name());
-        let tpe_str = render_column_type(column.column_type());
-        let nullability_str = render_nullability(&column);
-        let default_str = column
-            .default()
-            .filter(|default| !matches!(default, DefaultValue::DBGENERATED(_) | DefaultValue::SEQUENCE(_)))
-            .map(|default| format!(" DEFAULT {}", self.render_default(default, column.column_type_family())))
-            .unwrap_or_else(String::new);
-        let auto_increment_str = if column.is_autoincrement() && column.is_single_primary_key() {
-            " PRIMARY KEY AUTOINCREMENT"
-        } else {
-            ""
-        };
-
-        format!(
-            "{indentation}{column_name} {tpe_str}{nullability_str}{default_str}{auto_increment}",
-            indentation = SQL_INDENTATION,
-            column_name = column_name,
-            tpe_str = tpe_str,
-            nullability_str = nullability_str,
-            default_str = default_str,
-            auto_increment = auto_increment_str
-        )
+        sql_ddl::sqlite::Column::new(column.name(), render_column_type(column.column_type()))
+            .not_null(!column.arity().is_nullable())
+            .default(
+                column
+                    .default()
+                    .filter(|default| !matches!(default, DefaultValue::DBGENERATED(_) | DefaultValue::SEQUENCE(_)))
+                    .map(|default| self.render_default(default, column.column_type_family())),
+            )
+            .primary_key(column.is_single_primary_key())
+            .to_string()
     }
 
     fn render_references(&self, foreign_key: &ForeignKeyWalker<'_>) -> String {
