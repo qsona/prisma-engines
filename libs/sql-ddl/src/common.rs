@@ -3,7 +3,7 @@
 use std::fmt::{Display, Write as _};
 
 /// The indentation used throughout the crate. Four spaces.
-pub const SQL_INDENTATION: &str = "   ";
+pub const SQL_INDENTATION: &str = "    ";
 
 pub(crate) trait IteratorJoin {
     fn join(self, sep: &str) -> String;
